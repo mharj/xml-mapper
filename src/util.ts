@@ -7,18 +7,19 @@ export function assertNode(node: ChildNode | undefined): asserts node is ChildNo
 }
 
 export function getChild<T>(map: Map<string, ChildNode>, key: string, schemaItem: SchemaItem<T>): {child: ChildNode | undefined; key: string} {
+	let nsKey = schemaItem.namespace ? `${schemaItem.namespace}:${key}` : key;
 	let child: ChildNode | undefined;
 	if (schemaItem.ignoreCase) {
-		child = map.get(key.toLowerCase());
+		child = map.get(nsKey.toLowerCase());
 		if (!child && !schemaItem.attribute) {
-			const foundKey = Array.from(map.keys()).find((k) => k.toLowerCase() === key.toLowerCase());
+			const foundKey = Array.from(map.keys()).find((k) => k.toLowerCase() === nsKey.toLowerCase());
 			if (foundKey) {
 				child = map.get(foundKey);
-				key = foundKey;
+				nsKey = foundKey;
 			}
 		}
 	} else {
-		child = map.get(key);
+		child = map.get(nsKey);
 	}
-	return {child, key};
+	return {child, key: nsKey};
 }

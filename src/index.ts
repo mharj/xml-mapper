@@ -23,6 +23,7 @@ export type SchemaItem<T> = {
 	required?: true;
 	ignoreCase?: true;
 	attribute?: true;
+	namespace?: string;
 };
 /**
  * SchemaItem for object mapper
@@ -78,7 +79,6 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 	assertNode(rootNode);
 	const childMap = new Map(Array.from(rootNode.childNodes).map<[string, ChildNode]>((child) => [child.nodeName, child]));
 	childMap.delete('#text');
-
 	const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
 		const {key, child} = getChild(childMap, schemaKey, schemaItem);
 		let value;
@@ -116,7 +116,8 @@ export function arraySchema<T extends Record<string, unknown> = Record<string, u
 		for (const child of Array.from(rootNode.childNodes)) {
 			if (child.childNodes === null) continue;
 			const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [key, schemaItem]) => {
-				const isPresent = schemaItem.ignoreCase ? child.nodeName.toLowerCase() === key.toLowerCase() : child.nodeName === key;
+				const nsKey = schemaItem.namespace ? `${schemaItem.namespace}:${key}` : key;
+				const isPresent = schemaItem.ignoreCase ? child.nodeName.toLowerCase() === nsKey.toLowerCase() : child.nodeName === nsKey;
 				const value = isPresent || schemaItem.attribute ? schemaItem.mapper(child, rootNode) : null;
 				if (schemaItem.required && value === null) {
 					throw new Error(`key ${key} is required on schema`);

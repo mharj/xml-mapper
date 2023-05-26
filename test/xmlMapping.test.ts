@@ -53,15 +53,31 @@ const xmlWithCase = `<root>
 		</Object>
 </root>`;
 
+const xmlNamespace = `<ns:root>
+    <ns:string>string</ns:string>
+    <ns:number>123</ns:number>
+    <ns:date>2020-01-01T00:00:00.000Z</ns:date>
+    <ns:array>
+        <ns:item id="1">1</ns:item>
+        <ns:item id="2">2</ns:item>
+    </ns:array>
+    <ns:object id="123">
+        <ns:name>name</ns:name>
+        <ns:value>value</ns:value>
+    </ns:object>
+</ns:root>`;
+
 let doc: Document;
 let docWithCase: Document;
+let docNamespace: Document;
 
-describe('TestAsync cache', () => {
+describe('XML mapping', () => {
 	before(() => {
 		doc = new DOMParser().parseFromString(xml);
 		docWithCase = new DOMParser().parseFromString(xmlWithCase);
+		docNamespace = new DOMParser().parseFromString(xmlNamespace);
 	});
-	it('should return cached value', async () => {
+	it('should return mapped object', async () => {
 		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
 			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true},
 			name: {mapper: stringValue, required: true},
@@ -105,6 +121,29 @@ describe('TestAsync cache', () => {
 		};
 
 		const mapper = rootParser(docWithCase.documentElement, nodeBuilder);
+		console.log(mapper);
+		expect(1).to.equal(1);
+	});
+	it('should return namespace mapped object', async () => {
+		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
+			name: {mapper: stringValue, required: true, namespace: 'ns'},
+			value: {mapper: stringValue, required: true, namespace: 'ns'},
+		};
+
+		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
+			id: {mapper: attrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
+			item: {mapper: integerValue, required: true, namespace: 'ns'},
+		};
+
+		const nodeBuilder: ObjectMapperSchema<XmlData> = {
+			string: {mapper: stringValue, required: true, namespace: 'ns'},
+			number: {mapper: integerValue, required: true, namespace: 'ns'},
+			date: {mapper: dateValue, required: true, namespace: 'ns'},
+			array: {mapper: arraySchema(itemBuilder), required: true, namespace: 'ns'},
+			object: {mapper: objectSchema(objectBuilder), required: true, namespace: 'ns'},
+		};
+		const mapper = rootParser(docNamespace.documentElement, nodeBuilder);
 		console.log(mapper);
 		expect(1).to.equal(1);
 	});
