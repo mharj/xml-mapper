@@ -1,0 +1,55 @@
+{
+  "name": "xml-mapper",
+  "version": "0.0.1",
+  "description": "XML schema mapping",
+  "main": "./dist/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "mocha": {
+    "exit": true,
+    "extension": [
+      "ts",
+      "js"
+    ],
+    "recursive": true,
+    "require": [
+      "ts-node/register",
+      "source-map-support/register"
+    ],
+    "reporters": [
+      "spec",
+      "mocha-junit-reporter"
+    ]
+  },
+  "keywords": [
+    "xml",
+    "mapping",
+    "schema"
+  ],
+  "author": "mharj",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.2.3",
+    "@types/xmldom": "^0.1.31",
+    "@typescript-eslint/eslint-plugin": "^5.59.7",
+    "@typescript-eslint/parser": "^5.59.7",
+    "chai": "^4.3.7",
+    "eslint": "^8.41.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-deprecation": "^1.4.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-sonarjs": "^0.19.0",
+    "mocha": "^10.2.0",
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4",
+    "xmldom": "^0.6.0"
+  }
+}
