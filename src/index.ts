@@ -1,4 +1,4 @@
-import {assertNode} from './util';
+import {assertNode, getChild} from './util';
 
 export * from './primitives';
 export * from './attr';
@@ -14,26 +14,42 @@ export type BaseMapperFunction<T> = (node: ChildNode | undefined) => T | null;
 
 export type ObjectMapperFunction<T> = (node: ChildNode | undefined, rootNode: ChildNode) => T | null;
 
+export type AnyMapperFunction<T> = BaseMapperFunction<T> | ObjectMapperFunction<T>;
+/**
+ * Base schema item
+ */
+export type SchemaItem<T> = {
+	mapper: AnyMapperFunction<T>;
+	required?: true;
+	ignoreCase?: true;
+	attribute?: true;
+};
+/**
+ * SchemaItem for object mapper
+ */
+export type ObjectMapperSchemaItem<T> = SchemaItem<T> & {
+	mapper: ObjectMapperFunction<T> | BaseMapperFunction<T>;
+};
+
+/**
+ * SchemaItem for array mapper
+ */
+export type ArrayMapperSchemaItem<T> = SchemaItem<T> & {
+	mapper: BaseMapperFunction<T>;
+};
+
 /**
  * Schema for object mapper (with root node access)
  */
 export type ObjectMapperSchema<T> = {
-	[K in keyof T]: {
-		mapper: ObjectMapperFunction<T[K]> | BaseMapperFunction<T[K]>;
-		required?: true;
-		attribute?: true;
-	};
+	[K in keyof T]: ObjectMapperSchemaItem<T[K]>;
 };
 
 /**
  * Schema for array mapper
  */
 export type ArrayMapperSchema<T> = {
-	[K in keyof T]: {
-		mapper: BaseMapperFunction<T[K]>;
-		required?: true;
-		attribute?: true;
-	};
+	[K in keyof T]: ArrayMapperSchemaItem<T[K]>;
 };
 
 export function arrayValue<T>(mapper: ComposeFunction<T>) {
@@ -62,8 +78,9 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 	assertNode(rootNode);
 	const childMap = new Map(Array.from(rootNode.childNodes).map<[string, ChildNode]>((child) => [child.nodeName, child]));
 	childMap.delete('#text');
-	const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [key, schemaItem]) => {
-		const child = childMap.get(key);
+
+	const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
+		const {key, child} = getChild(childMap, schemaKey, schemaItem);
 		let value;
 		if (schemaItem.attribute) {
 			value = schemaItem.mapper(undefined, rootNode); // we don't allow read attributes from child node when it's object type (no way to map it)
@@ -73,7 +90,7 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 		if (schemaItem.required && value === null) {
 			throw new Error(`key ${key} is required on schema`);
 		}
-		prev[key] = value;
+		prev[schemaKey] = value;
 		childMap.delete(key);
 		return prev;
 	}, {} as T);
@@ -99,7 +116,8 @@ export function arraySchema<T extends Record<string, unknown> = Record<string, u
 		for (const child of Array.from(rootNode.childNodes)) {
 			if (child.childNodes === null) continue;
 			const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [key, schemaItem]) => {
-				const value = child.nodeName === key || schemaItem.attribute ? schemaItem.mapper(child, rootNode) : null;
+				const isPresent = schemaItem.ignoreCase ? child.nodeName.toLowerCase() === key.toLowerCase() : child.nodeName === key;
+				const value = isPresent || schemaItem.attribute ? schemaItem.mapper(child, rootNode) : null;
 				if (schemaItem.required && value === null) {
 					throw new Error(`key ${key} is required on schema`);
 				}
