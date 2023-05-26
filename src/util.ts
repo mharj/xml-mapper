@@ -6,6 +6,15 @@ export function assertNode(node: ChildNode | undefined): asserts node is ChildNo
 	}
 }
 
+export function assertChildNode(node: ChildNode | undefined): asserts node is ChildNode {
+	if (!node) {
+		throw TypeError('Node is null');
+	}
+	if (node.childNodes === null) {
+		throw TypeError('Node has no child nodes');
+	}
+}
+
 export function getChild<T>(map: Map<string, ChildNode>, key: string, schemaItem: SchemaItem<T>): {child: ChildNode | undefined; key: string} {
 	let nsKey = schemaItem.namespace ? `${schemaItem.namespace}:${key}` : key;
 	let child: ChildNode | undefined;

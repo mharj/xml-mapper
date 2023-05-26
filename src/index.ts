@@ -1,4 +1,4 @@
-import {assertNode, getChild} from './util';
+import {assertChildNode, assertNode, getChild} from './util';
 
 export * from './primitives';
 export * from './attr';
@@ -106,18 +106,23 @@ export function objectSchema<T extends Record<string, unknown> = Record<string, 
 	};
 }
 
+function getNsKey(key: string, schemaItem: SchemaItem<unknown>) {
+	return schemaItem.namespace ? `${schemaItem.namespace}:${key}` : key;
+}
+
+function isValuePresent(child: ChildNode, key: string, schemaItem: SchemaItem<unknown>) {
+	const nsKey = getNsKey(key, schemaItem);
+	return schemaItem.ignoreCase ? child.nodeName.toLowerCase() === nsKey.toLowerCase() : child.nodeName === nsKey;
+}
+
 export function arraySchema<T extends Record<string, unknown> = Record<string, unknown>>(schema: ArrayMapperSchema<T>): ComposeFunction<T[]> {
 	return function (rootNode: ChildNode | undefined): T[] {
-		assertNode(rootNode);
-		if (rootNode.childNodes === null) {
-			throw new Error('rootNode.childNodes is null');
-		}
+		assertChildNode(rootNode);
 		const out: T[] = [];
 		for (const child of Array.from(rootNode.childNodes)) {
 			if (child.childNodes === null) continue;
 			const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [key, schemaItem]) => {
-				const nsKey = schemaItem.namespace ? `${schemaItem.namespace}:${key}` : key;
-				const isPresent = schemaItem.ignoreCase ? child.nodeName.toLowerCase() === nsKey.toLowerCase() : child.nodeName === nsKey;
+				const isPresent = isValuePresent(child, key, schemaItem);
 				const value = isPresent || schemaItem.attribute ? schemaItem.mapper(child, rootNode) : null;
 				if (schemaItem.required && value === null) {
 					throw new Error(`key ${key} is required on schema`);

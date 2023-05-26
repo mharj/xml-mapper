@@ -1,5 +1,5 @@
 {
-  "name": "xml-mapper",
+  "name": "@avanio/xml-mapper",
   "version": "0.0.1",
   "description": "XML schema mapping",
   "main": "./dist/index.js",
@@ -7,8 +7,14 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha"
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "mocha",
+    "lint": "eslint src"
   },
+  "files": [
+    "dist"
+  ],
   "mocha": {
     "exit": true,
     "extension": [
