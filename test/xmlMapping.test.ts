@@ -14,6 +14,7 @@ import {
 	attrNumberValue,
 	ArrayMapperSchema,
 	rootAttrNumberValue,
+	XmlParserError,
 } from '../src/';
 const expect = chai.expect;
 
@@ -168,6 +169,7 @@ describe('XML mapping', () => {
 			notExists: {mapper: stringValue, required: true, namespace: 'ns'},
 		};
 		expect(() => rootParser(docNamespace.documentElement, nodeBuilder)).to.throw(
+			XmlParserError,
 			`key 'ns:notExists' not found on path '#document/ns:root' and is required on schema`,
 		);
 	});
@@ -190,6 +192,6 @@ describe('XML mapping', () => {
 			object: {mapper: objectSchema(objectBuilder), required: true, ignoreCase: true},
 		};
 
-		expect(() => rootParser(doc.documentElement, nodeBuilder, true)).to.throw(`unknown key(s) 'string' in #document/root`);
+		expect(() => rootParser(doc.documentElement, nodeBuilder, true)).to.throws(XmlParserError, `unknown key(s) 'string' in #document/root`);
 	});
 });
