@@ -75,7 +75,17 @@ export function unknownValue(node: ChildNode | undefined): unknown | null {
 	return null;
 }
 
-export function rootParser<T extends Record<string, unknown> = Record<string, unknown>>(rootNode: Element, schema: ObjectMapperSchema<T>): T {
+function buildXmlPath(rootNode: Node): string {
+	const path = [rootNode.nodeName];
+	let current = rootNode;
+	while (current.parentNode) {
+		current = current.parentNode;
+		path.push(current.nodeName);
+	}
+	return path.reverse().join('/');
+}
+
+export function rootParser<T extends Record<string, unknown> = Record<string, unknown>>(rootNode: Element, schema: ObjectMapperSchema<T>, isStrict = false): T {
 	assertNode(rootNode);
 	const childMap = new Map(Array.from(rootNode.childNodes).map<[string, ChildNode]>((child) => [child.nodeName, child]));
 	childMap.delete('#text');
@@ -88,14 +98,18 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 			value = child ? schemaItem.mapper(child, rootNode) : null;
 		}
 		if (schemaItem.required && value === null) {
-			throw new Error(`key ${key} is required on schema`);
+			throw new Error(`key '${key}' not found on path '${buildXmlPath(rootNode)}' and is required on schema`);
 		}
 		prev[schemaKey] = value;
 		childMap.delete(key);
 		return prev;
 	}, {} as T);
 	if (childMap.size > 0) {
-		throw new Error(`unknown key ${Array.from(childMap.keys()).join(',')}`);
+		if (isStrict) {
+			throw new Error(`unknown key(s) '${Array.from(childMap.keys()).join(',')}' in ${buildXmlPath(rootNode)}`);
+		} else {
+			logger?.warn(`unknown key(s) '${Array.from(childMap.keys()).join(',')}' in ${buildXmlPath(rootNode)}`);
+		}
 	}
 	return patchItem as T;
 }
@@ -125,7 +139,7 @@ export function arraySchema<T extends Record<string, unknown> = Record<string, u
 				const isPresent = isValuePresent(child, key, schemaItem);
 				const value = isPresent || schemaItem.attribute ? schemaItem.mapper(child, rootNode) : null;
 				if (schemaItem.required && value === null) {
-					throw new Error(`key ${key} is required on schema`);
+					throw new Error(`key '${key}' not found on path '${buildXmlPath(child)}' and is required on schema`);
 				}
 				prev[key] = value;
 				return prev;

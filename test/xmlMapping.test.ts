@@ -147,4 +147,49 @@ describe('XML mapping', () => {
 		console.log(mapper);
 		expect(1).to.equal(1);
 	});
+	it('should return error if key is not found', async () => {
+		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
+			name: {mapper: stringValue, required: true, namespace: 'ns'},
+			value: {mapper: stringValue, required: true, namespace: 'ns'},
+		};
+
+		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
+			id: {mapper: attrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
+			item: {mapper: integerValue, required: true, namespace: 'ns'},
+		};
+
+		const nodeBuilder: ObjectMapperSchema<XmlData & {notExists: string}> = {
+			string: {mapper: stringValue, required: true, namespace: 'ns'},
+			number: {mapper: integerValue, required: true, namespace: 'ns'},
+			date: {mapper: dateValue, required: true, namespace: 'ns'},
+			array: {mapper: arraySchema(itemBuilder), required: true, namespace: 'ns'},
+			object: {mapper: objectSchema(objectBuilder), required: true, namespace: 'ns'},
+			notExists: {mapper: stringValue, required: true, namespace: 'ns'},
+		};
+		expect(() => rootParser(docNamespace.documentElement, nodeBuilder)).to.throw(
+			`key 'ns:notExists' not found on path '#document/ns:root' and is required on schema`,
+		);
+	});
+	it('should return error if key is not found', async () => {
+		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, ignoreCase: true},
+			name: {mapper: stringValue, required: true},
+			value: {mapper: stringValue, required: true, ignoreCase: true},
+		};
+
+		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
+			id: {mapper: attrNumberValue('id'), attribute: true, required: true, ignoreCase: true},
+			item: {mapper: integerValue, required: true, ignoreCase: true},
+		};
+
+		const nodeBuilder: ObjectMapperSchema<Omit<XmlData, 'string'>> = {
+			number: {mapper: integerValue, required: true, ignoreCase: true},
+			date: {mapper: dateValue, required: true, ignoreCase: true},
+			array: {mapper: arraySchema(itemBuilder), required: true, ignoreCase: true},
+			object: {mapper: objectSchema(objectBuilder), required: true, ignoreCase: true},
+		};
+
+		expect(() => rootParser(doc.documentElement, nodeBuilder, true)).to.throw(`unknown key(s) 'string' in #document/root`);
+	});
 });
