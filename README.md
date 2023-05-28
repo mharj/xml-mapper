@@ -14,11 +14,13 @@ npm install --save @avanio/xml-mapper
 
 ```typescript
 type XmlData = {
-	string: string;
-	number: number;
-	date: Date;
-	array: {item: number}[];
-	object: {id: number; name: string; value: string};
+	root: {
+		string: string;
+		number: number;
+		date: Date;
+		array: {id: number; item: number}[];
+		object: {id: number; name: string; value: string};
+	};
 };
 
 const xml = `<root>
@@ -37,23 +39,28 @@ const xml = `<root>
 
 const doc = new DOMParser().parseFromString(xml);
 
-const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
-	id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true},
+const objectSchema: MappingSchema<XmlData['root']['object']> = {
+	id: {mapper: rootAttrNumberValue('id'), required: true},
 	name: {mapper: stringValue, required: true},
 	value: {mapper: stringValue, required: true},
 };
 
-const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
-	id: {mapper: attrNumberValue('id'), attribute: true, required: true},
-	item: {mapper: integerValue, required: true},
+const itemSchema: MappingSchema<XmlData['root']['array'][number]> = {
+	id: {mapper: rootAttrNumberValue('id'), required: true},
+	item: {mapper: rootIntegerValue, required: true},
 };
 
-const rootBuilder: ObjectMapperSchema<XmlData> = {
+const dataSchema: MappingSchema<XmlData['root']> = {
 	string: {mapper: stringValue, required: true},
 	number: {mapper: integerValue, required: true},
 	date: {mapper: dateValue, required: true},
-	array: {mapper: arraySchema(itemBuilder), required: true},
-	object: {mapper: objectSchema(objectBuilder), required: true},
+	array: {mapper: arraySchemaValue(itemSchema), required: true},
+	object: {mapper: objectSchemaValue(objectSchema), required: true},
 };
-const data = rootParser(doc.documentElement, rootBuilder);
+
+const rootSchema: MappingSchema<XmlData> = {
+	root: {mapper: objectSchemaValue(dataSchema), required: true},
+};
+
+const data: XmlData = rootParser(doc.documentElement, rootSchema);
 ```

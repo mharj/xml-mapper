@@ -1,42 +1,49 @@
-import {BaseMapperFunction, ObjectMapperFunction} from '.';
-import {assertNode} from './util';
+import {assertNode, buildXmlPath} from './util';
+import {XmlMappingComposeFunction} from '.';
 
 /**
- * reads string attribute value from current node
+ * reads string attribute value from current node (mapped to lookupKey)
+ *
+ * ```<root><node attrName="value" /></root> => {lookupKey: "value"}```
  */
-export function attrStringValue(attr: string): BaseMapperFunction<string> {
-	return function (node) {
-		assertNode(node);
-		return (node as Element).getAttribute(attr);
+export function attrStringValue(attrName: string): XmlMappingComposeFunction<string> {
+	return function ({lookupKey, node, rootNode}) {
+		assertNode(node, rootNode, `attrStringValue ${attrName} got null node from ${buildXmlPath(rootNode)} key: ${lookupKey}`);
+		return (node as Element).getAttribute(attrName);
 	};
 }
 
 /**
- * reads number attribute value from current node
+ * reads number attribute value from current node and maps it to used lookupKey
+ *
+ * ```<root><node attrName="123" /></root> => {lookupKey: 123}```
  */
-export function attrNumberValue(attr: string): BaseMapperFunction<number> {
-	return function (node) {
-		assertNode(node);
-		const value = (node as Element).getAttribute(attr);
+export function attrNumberValue(attrName: string): XmlMappingComposeFunction<number> {
+	return function (props) {
+		const value = attrStringValue(attrName)(props);
 		return value !== null ? parseInt(value, 10) : null;
 	};
 }
 
 /**
- * reads string attribute value from rootNode
+ * reads string attribute value from rootNode and maps it to used lookupKey
+ *
+ * ```<root attrName="value" /><node /></root> => {lookupKey: "value"}```
  */
-export function rootAttrStringValue(attr: string): ObjectMapperFunction<string> {
-	return function (node, rootNode) {
-		return (rootNode as Element).getAttribute(attr);
+export function rootAttrStringValue(attrName: string): XmlMappingComposeFunction<string> {
+	return function ({rootNode}) {
+		return (rootNode as Element).getAttribute(attrName);
 	};
 }
 
 /**
- * reads number attribute value from rootNode
+ * reads number attribute value from rootNode and maps it to used lookupKey
+ *
+ * ```<root attrName="123" /><node /></root> => {lookupKey: 123}```
  */
-export function rootAttrNumberValue(attr: string): ObjectMapperFunction<number> {
-	return function (node, rootNode) {
-		const value = (rootNode as Element).getAttribute(attr);
+export function rootAttrNumberValue(attrName: string): XmlMappingComposeFunction<number> {
+	return function ({rootNode}) {
+		const value = (rootNode as Element).getAttribute(attrName);
 		return value !== null ? parseInt(value, 10) : null;
 	};
 }

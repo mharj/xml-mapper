@@ -1,104 +1,61 @@
-import {assertChildNode, assertNode, getChild} from './util';
+import {assertChildNode, buildXmlPath, getChild, getKey} from './util';
 import {XmlParserError} from './XmlParserError';
 
 export * from './primitives';
+export * from './rootPrimitives';
 export * from './attr';
 export * from './XmlParserError';
+export * from './util';
 
-type ComposeFunction<T> = (node: ChildNode | undefined) => T | null;
+export type XmlParserOptions = {
+	ignoreCase: boolean;
+	emptyArrayAsArray: boolean;
+	isStrict: boolean;
+	logger: Console | undefined;
+};
+
+export type XmlMappingFunctionProps = {
+	lookupKey: string;
+	node: ChildNode | undefined;
+	rootNode: ChildNode;
+	opts: XmlParserOptions;
+};
+
+export type XmlMappingComposeFunction<T> = (arg: XmlMappingFunctionProps) => T | null;
 
 let logger: undefined | Console;
-export function setLogger(newLogger: Console) {
+export function setLogger(newLogger: Console | undefined) {
 	logger = newLogger;
 }
 
-export type BaseMapperFunction<T> = (node: ChildNode | undefined) => T | null;
-
-export type ObjectMapperFunction<T> = (node: ChildNode | undefined, rootNode: ChildNode) => T | null;
-
-export type AnyMapperFunction<T> = BaseMapperFunction<T> | ObjectMapperFunction<T>;
 /**
  * Base schema item
  */
-export type SchemaItem<T> = {
-	mapper: AnyMapperFunction<T>;
+export type XmlSchemaItem<T> = {
+	mapper: XmlMappingComposeFunction<T>;
 	required?: true;
-	ignoreCase?: true;
-	attribute?: true;
 	namespace?: string;
 };
-/**
- * SchemaItem for object mapper
- */
-export type ObjectMapperSchemaItem<T> = SchemaItem<T> & {
-	mapper: ObjectMapperFunction<T> | BaseMapperFunction<T>;
-};
 
 /**
- * SchemaItem for array mapper
+ * Schema for XML object mapping
  */
-export type ArrayMapperSchemaItem<T> = SchemaItem<T> & {
-	mapper: BaseMapperFunction<T>;
+export type XmlMappingSchema<T> = {
+	[K in keyof T]: XmlSchemaItem<T[K]>;
 };
 
-/**
- * Schema for object mapper (with root node access)
- */
-export type ObjectMapperSchema<T> = {
-	[K in keyof T]: ObjectMapperSchemaItem<T[K]>;
-};
-
-/**
- * Schema for array mapper
- */
-export type ArrayMapperSchema<T> = {
-	[K in keyof T]: ArrayMapperSchemaItem<T[K]>;
-};
-
-export function arrayValue<T>(mapper: ComposeFunction<T>) {
-	return function (node: ChildNode | undefined): T[] {
-		assertNode(node);
-		const out: T[] = [];
-		for (const child of Array.from(node.childNodes)) {
-			const value = mapper(child);
-			if (value) {
-				out.push(value);
-			}
-		}
-		return out;
-	};
-}
-
-export function unknownValue(node: ChildNode | undefined): unknown | null {
-	assertNode(node);
-	if (node.textContent) {
-		logger?.warn(node.textContent);
+function objectParser<T extends Record<string, unknown> = Record<string, unknown>>(rootNode: Element, schema: XmlMappingSchema<T>, opts: XmlParserOptions): T {
+	if (!rootNode) {
+		throw new XmlParserError('Root node is null', rootNode);
 	}
-	return null;
-}
-
-function buildXmlPath(rootNode: Node): string {
-	const path = [rootNode.nodeName];
-	let current = rootNode;
-	while (current.parentNode) {
-		current = current.parentNode;
-		path.push(current.nodeName);
-	}
-	return path.reverse().join('/');
-}
-
-export function rootParser<T extends Record<string, unknown> = Record<string, unknown>>(rootNode: Element, schema: ObjectMapperSchema<T>, isStrict = false): T {
-	assertNode(rootNode);
+	logger?.debug(`objectSchema ${buildXmlPath(rootNode)}`);
 	const childMap = new Map(Array.from(rootNode.childNodes).map<[string, ChildNode]>((child) => [child.nodeName, child]));
 	childMap.delete('#text');
-	const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
-		const {key, child} = getChild(childMap, schemaKey, schemaItem);
-		let value;
-		if (schemaItem.attribute) {
-			value = schemaItem.mapper(undefined, rootNode); // we don't allow read attributes from child node when it's object type (no way to map it)
-		} else {
-			value = child ? schemaItem.mapper(child, rootNode) : null;
-		}
+	const schemaEntries = Object.entries(schema) as [string, XmlSchemaItem<T[keyof T]>][];
+	const patchItem = schemaEntries.reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
+		logger?.debug(`objectSchema lookup ${buildXmlPath(rootNode)}/${schemaKey}`);
+		const {key, child} = getChild(childMap, schemaKey, schemaItem, opts);
+		const value = schemaItem.mapper({lookupKey: key, node: child, opts, rootNode});
 		if (schemaItem.required && value === null) {
 			throw new XmlParserError(`key '${key}' not found on path '${buildXmlPath(rootNode)}' and is required on schema`, rootNode);
 		}
@@ -107,48 +64,82 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 		return prev;
 	}, {} as T);
 	if (childMap.size > 0) {
-		if (isStrict) {
+		if (opts?.isStrict) {
 			throw new XmlParserError(`unknown key(s) '${Array.from(childMap.keys()).join(',')}' in ${buildXmlPath(rootNode)}`, rootNode);
 		} else {
-			logger?.warn(`unknown key(s) '${Array.from(childMap.keys()).join(',')}' in ${buildXmlPath(rootNode)} `);
-			logger?.debug('Node', rootNode);
+			logger?.warn(`XML parser, unknown key(s) '${Array.from(childMap.keys()).join(',')}' in ${buildXmlPath(rootNode)}`);
+			logger?.debug('Node', `${rootNode}`);
 		}
 	}
 	return patchItem as T;
 }
 
-export function objectSchema<T extends Record<string, unknown> = Record<string, unknown>>(schema: ObjectMapperSchema<T>): ComposeFunction<T> {
-	return function (rootNode: ChildNode | undefined): T {
-		return rootParser(rootNode as Element, schema);
+const initialOptions: XmlParserOptions = {
+	emptyArrayAsArray: false,
+	ignoreCase: false,
+	isStrict: false,
+	logger,
+};
+
+/**
+ * root parser
+ */
+export function rootParser<T extends Record<string, unknown> = Record<string, unknown>>(
+	rootNode: Element,
+	schema: XmlMappingSchema<T>,
+	opts: Partial<XmlParserOptions> = initialOptions,
+): T {
+	if (!rootNode) {
+		throw new XmlParserError('Root node is null', rootNode);
+	}
+	const schemaEntries = Object.entries(schema) as [string, XmlSchemaItem<T[keyof T]>][];
+	const patchItem = schemaEntries.reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
+		const currentOpts = Object.assign({}, initialOptions, opts);
+		logger?.debug(`rootParser lookup ${buildXmlPath(rootNode)} @ ${schemaKey}`);
+		const key = getKey(schemaKey, schemaItem, currentOpts);
+		const value = schemaItem.mapper({
+			lookupKey: key,
+			node: rootNode,
+			opts: currentOpts,
+			rootNode,
+		});
+		if (schemaItem.required && value === null) {
+			throw new XmlParserError(`key '${key}' not found on path '${buildXmlPath(rootNode)}' and is required on schema`, rootNode);
+		}
+		prev[schemaKey] = value;
+		return prev;
+	}, {});
+	return patchItem as T;
+}
+
+/**
+ * mapping for object based on schema
+ */
+export function objectSchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(schema: XmlMappingSchema<T>): XmlMappingComposeFunction<T> {
+	return function ({lookupKey, node, opts}): T | null {
+		if (!schema[lookupKey]?.required && !node) {
+			return null; // if not required and not found, return null wihout parsing
+		}
+		return objectParser(node as Element, schema, opts);
 	};
 }
 
-function getNsKey(key: string, schemaItem: SchemaItem<unknown>) {
-	return schemaItem.namespace ? `${schemaItem.namespace}:${key}` : key;
-}
-
-function isValuePresent(child: ChildNode, key: string, schemaItem: SchemaItem<unknown>) {
-	const nsKey = getNsKey(key, schemaItem);
-	return schemaItem.ignoreCase ? child.nodeName.toLowerCase() === nsKey.toLowerCase() : child.nodeName === nsKey;
-}
-
-export function arraySchema<T extends Record<string, unknown> = Record<string, unknown>>(schema: ArrayMapperSchema<T>): ComposeFunction<T[]> {
-	return function (rootNode: ChildNode | undefined): T[] {
-		assertChildNode(rootNode);
-		const out: T[] = [];
-		for (const child of Array.from(rootNode.childNodes)) {
-			if (child.childNodes === null) continue;
-			const patchItem = Object.entries(schema).reduce<Record<string, unknown>>((prev, [key, schemaItem]) => {
-				const isPresent = isValuePresent(child, key, schemaItem);
-				const value = isPresent || schemaItem.attribute ? schemaItem.mapper(child, rootNode) : null;
-				if (schemaItem.required && value === null) {
-					throw new XmlParserError(`key '${key}' not found on path '${buildXmlPath(child)}' and is required on schema`, child);
-				}
-				prev[key] = value;
-				return prev;
-			}, {});
-			out.push(patchItem as T);
+/**
+ * mapping for array of objects based on schema
+ */
+export function arraySchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(schema: XmlMappingSchema<T>): XmlMappingComposeFunction<T[]> {
+	return function ({lookupKey, node, opts}): T[] | null {
+		if (!schema[lookupKey]?.required && !node) {
+			if (opts.emptyArrayAsArray) {
+				return [];
+			}
+			return null;
 		}
-		return out as unknown as T[];
+		assertChildNode(node);
+		return Array.from(node.childNodes).reduce<T[]>((prev, child) => {
+			if (child.childNodes === null) return prev;
+			prev.push(objectParser(child as Element, schema, opts));
+			return prev;
+		}, []);
 	};
 }

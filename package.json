@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "watch": "tsc -w",
     "prepublishOnly": "npm run build",
     "test": "mocha",
     "lint": "eslint src"

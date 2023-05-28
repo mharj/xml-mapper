@@ -4,26 +4,28 @@ import {DOMParser} from 'xmldom';
 import 'mocha';
 import * as chai from 'chai';
 import {
-	ObjectMapperSchema,
-	arraySchema,
-	rootParser,
+	arraySchemaValue,
 	dateValue,
 	integerValue,
-	objectSchema,
-	stringValue,
-	attrNumberValue,
-	ArrayMapperSchema,
+	XmlMappingSchema,
+	objectSchemaValue,
 	rootAttrNumberValue,
+	rootIntegerValue,
+	rootParser,
+	setLogger,
+	stringValue,
 	XmlParserError,
 } from '../src/';
 const expect = chai.expect;
 
 type XmlData = {
-	string: string;
-	number: number;
-	date: Date;
-	array: {item: number}[];
-	object: {id: number; name: string; value: string};
+	root: {
+		string: string;
+		number: number;
+		date: Date;
+		array: {id: number; item: number}[];
+		object: {id: number; name: string; value: string};
+	};
 };
 
 const xml = `<root>
@@ -72,126 +74,153 @@ let doc: Document;
 let docWithCase: Document;
 let docNamespace: Document;
 
+const output = {
+	root: {
+		string: 'string',
+		number: 123,
+		date: new Date('2020-01-01T00:00:00.000Z'),
+		array: [
+			{id: 1, item: 1},
+			{id: 2, item: 2},
+		],
+		object: {id: 123, name: 'name', value: 'value'},
+	},
+};
+
 describe('XML mapping', () => {
 	before(() => {
+		setLogger(undefined);
 		doc = new DOMParser().parseFromString(xml);
 		docWithCase = new DOMParser().parseFromString(xmlWithCase);
 		docNamespace = new DOMParser().parseFromString(xmlNamespace);
 	});
 	it('should return mapped object', async () => {
-		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
-			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true},
+		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
 			name: {mapper: stringValue, required: true},
 			value: {mapper: stringValue, required: true},
 		};
 
-		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
-			id: {mapper: attrNumberValue('id'), attribute: true, required: true},
-			item: {mapper: integerValue, required: true},
+		const itemSchema: XmlMappingSchema<XmlData['root']['array'][number]> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
+			item: {mapper: rootIntegerValue, required: true},
 		};
 
-		const nodeBuilder: ObjectMapperSchema<XmlData> = {
+		const dataSchema: XmlMappingSchema<XmlData['root']> = {
 			string: {mapper: stringValue, required: true},
 			number: {mapper: integerValue, required: true},
 			date: {mapper: dateValue, required: true},
-			array: {mapper: arraySchema(itemBuilder), required: true},
-			object: {mapper: objectSchema(objectBuilder), required: true},
+			array: {mapper: arraySchemaValue(itemSchema), required: true},
+			object: {mapper: objectSchemaValue(objectSchema), required: true},
 		};
-		const mapper = rootParser(doc.documentElement, nodeBuilder);
-		console.log(mapper);
-		expect(1).to.equal(1);
+
+		const rootSchema: XmlMappingSchema<XmlData> = {
+			root: {mapper: objectSchemaValue(dataSchema), required: true},
+		};
+
+		const data: XmlData = rootParser(doc.documentElement, rootSchema);
+		expect(data).to.be.eql(output);
 	});
 	it('should return case-insensitive value if ignore case is true', async () => {
-		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
-			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, ignoreCase: true},
+		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
 			name: {mapper: stringValue, required: true},
-			value: {mapper: stringValue, required: true, ignoreCase: true},
+			value: {mapper: stringValue, required: true},
 		};
 
-		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
-			id: {mapper: attrNumberValue('id'), attribute: true, required: true, ignoreCase: true},
-			item: {mapper: integerValue, required: true, ignoreCase: true},
+		const itemSchema: XmlMappingSchema<{id: number; item: number}> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
+			item: {mapper: rootIntegerValue, required: true},
 		};
 
-		const nodeBuilder: ObjectMapperSchema<XmlData> = {
-			string: {mapper: stringValue, required: true, ignoreCase: true},
-			number: {mapper: integerValue, required: true, ignoreCase: true},
-			date: {mapper: dateValue, required: true, ignoreCase: true},
-			array: {mapper: arraySchema(itemBuilder), required: true, ignoreCase: true},
-			object: {mapper: objectSchema(objectBuilder), required: true, ignoreCase: true},
+		const dataSchema: XmlMappingSchema<XmlData['root']> = {
+			string: {mapper: stringValue, required: true},
+			number: {mapper: integerValue, required: true},
+			date: {mapper: dateValue, required: true},
+			array: {mapper: arraySchemaValue(itemSchema), required: true},
+			object: {mapper: objectSchemaValue(objectSchema), required: true},
 		};
 
-		const mapper = rootParser(docWithCase.documentElement, nodeBuilder);
-		console.log(mapper);
-		expect(1).to.equal(1);
+		const rootSchema: XmlMappingSchema<XmlData> = {
+			root: {mapper: objectSchemaValue(dataSchema), required: true},
+		};
+
+		const data: XmlData = rootParser(docWithCase.documentElement, rootSchema, {ignoreCase: true});
+		expect(data).to.be.eql(output);
 	});
 	it('should return namespace mapped object', async () => {
-		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
-			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
+		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true, namespace: 'ns'},
 			name: {mapper: stringValue, required: true, namespace: 'ns'},
 			value: {mapper: stringValue, required: true, namespace: 'ns'},
 		};
 
-		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
-			id: {mapper: attrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
-			item: {mapper: integerValue, required: true, namespace: 'ns'},
+		const itemSchema: XmlMappingSchema<{id: number; item: number}> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true, namespace: 'ns'},
+			item: {mapper: rootIntegerValue, required: true, namespace: 'ns'},
 		};
 
-		const nodeBuilder: ObjectMapperSchema<XmlData> = {
+		const dataSchema: XmlMappingSchema<XmlData['root']> = {
 			string: {mapper: stringValue, required: true, namespace: 'ns'},
 			number: {mapper: integerValue, required: true, namespace: 'ns'},
 			date: {mapper: dateValue, required: true, namespace: 'ns'},
-			array: {mapper: arraySchema(itemBuilder), required: true, namespace: 'ns'},
-			object: {mapper: objectSchema(objectBuilder), required: true, namespace: 'ns'},
-		};
-		const mapper = rootParser(docNamespace.documentElement, nodeBuilder);
-		console.log(mapper);
-		expect(1).to.equal(1);
-	});
-	it('should return error if key is not found', async () => {
-		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
-			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
-			name: {mapper: stringValue, required: true, namespace: 'ns'},
-			value: {mapper: stringValue, required: true, namespace: 'ns'},
+			array: {mapper: arraySchemaValue(itemSchema), required: true, namespace: 'ns'},
+			object: {mapper: objectSchemaValue(objectSchema), required: true, namespace: 'ns'},
 		};
 
-		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
-			id: {mapper: attrNumberValue('id'), attribute: true, required: true, namespace: 'ns'},
-			item: {mapper: integerValue, required: true, namespace: 'ns'},
+		const rootSchema: XmlMappingSchema<XmlData> = {
+			root: {mapper: objectSchemaValue(dataSchema), required: true, namespace: 'ns'},
 		};
 
-		const nodeBuilder: ObjectMapperSchema<XmlData & {notExists: string}> = {
-			string: {mapper: stringValue, required: true, namespace: 'ns'},
-			number: {mapper: integerValue, required: true, namespace: 'ns'},
-			date: {mapper: dateValue, required: true, namespace: 'ns'},
-			array: {mapper: arraySchema(itemBuilder), required: true, namespace: 'ns'},
-			object: {mapper: objectSchema(objectBuilder), required: true, namespace: 'ns'},
-			notExists: {mapper: stringValue, required: true, namespace: 'ns'},
-		};
-		expect(() => rootParser(docNamespace.documentElement, nodeBuilder)).to.throw(
-			XmlParserError,
-			`key 'ns:notExists' not found on path '#document/ns:root' and is required on schema`,
-		);
+		const data: XmlData = rootParser(docNamespace.documentElement, rootSchema);
+		expect(data).to.be.eql(output);
 	});
 	it('should return error if key is not found', async () => {
-		const objectBuilder: ObjectMapperSchema<XmlData['object']> = {
-			id: {mapper: rootAttrNumberValue('id'), attribute: true, required: true, ignoreCase: true},
+		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
 			name: {mapper: stringValue, required: true},
-			value: {mapper: stringValue, required: true, ignoreCase: true},
+			value: {mapper: stringValue, required: true},
 		};
 
-		const itemBuilder: ArrayMapperSchema<{id: number; item: number}> = {
-			id: {mapper: attrNumberValue('id'), attribute: true, required: true, ignoreCase: true},
-			item: {mapper: integerValue, required: true, ignoreCase: true},
+		const itemSchema: XmlMappingSchema<{id: number; item: number}> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
+			item: {mapper: rootIntegerValue, required: true},
 		};
 
-		const nodeBuilder: ObjectMapperSchema<Omit<XmlData, 'string'>> = {
-			number: {mapper: integerValue, required: true, ignoreCase: true},
-			date: {mapper: dateValue, required: true, ignoreCase: true},
-			array: {mapper: arraySchema(itemBuilder), required: true, ignoreCase: true},
-			object: {mapper: objectSchema(objectBuilder), required: true, ignoreCase: true},
+		const dataSchema: XmlMappingSchema<XmlData['root'] & {notExists: string}> = {
+			string: {mapper: stringValue, required: true},
+			number: {mapper: integerValue, required: true},
+			date: {mapper: dateValue, required: true},
+			array: {mapper: arraySchemaValue(itemSchema), required: true},
+			object: {mapper: objectSchemaValue(objectSchema), required: true},
+			notExists: {mapper: stringValue, required: true},
+		};
+		const rootSchema: XmlMappingSchema<XmlData> = {
+			root: {mapper: objectSchemaValue(dataSchema), required: true},
+		};
+		expect(() => rootParser(doc.documentElement, rootSchema)).to.throw(XmlParserError, `stringValue got null node from #document/root key: notExists`);
+	});
+	it('should return error if extra key found', async () => {
+		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
+			name: {mapper: stringValue, required: true},
+			value: {mapper: stringValue, required: true},
 		};
 
-		expect(() => rootParser(doc.documentElement, nodeBuilder, true)).to.throws(XmlParserError, `unknown key(s) 'string' in #document/root`);
+		const itemSchema: XmlMappingSchema<{id: number; item: number}> = {
+			id: {mapper: rootAttrNumberValue('id'), required: true},
+			item: {mapper: rootIntegerValue, required: true},
+		};
+		type BrokenRoot = Omit<XmlData['root'], 'string'>;
+		const dataSchema: XmlMappingSchema<BrokenRoot> = {
+			number: {mapper: integerValue, required: true},
+			date: {mapper: dateValue, required: true},
+			array: {mapper: arraySchemaValue(itemSchema), required: true},
+			object: {mapper: objectSchemaValue(objectSchema), required: true},
+		};
+		const rootSchema: XmlMappingSchema<XmlData> = {
+			root: {mapper: objectSchemaValue<any>(dataSchema), required: true},
+		};
+		expect(() => rootParser(doc.documentElement, rootSchema, {isStrict: true})).to.throws(XmlParserError, `unknown key(s) 'string' in #document/root`);
 	});
 });

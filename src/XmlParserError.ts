@@ -1,5 +1,5 @@
 /**
- * XmlParserError class which contains node for where parsing failed
+ * XmlParserError class which contains XML node for where parsing failed
  */
 export class XmlParserError extends Error {
 	public readonly node: Node;
