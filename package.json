@@ -1,6 +1,6 @@
 {
   "name": "@avanio/xml-mapper",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "XML schema mapping",
   "main": "./dist/index.js",
   "directories": {
