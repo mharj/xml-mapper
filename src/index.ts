@@ -170,25 +170,26 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 	name: string,
 	schema: XmlMappingSchema<T>,
 ): XmlMappingComposeFunction<T[]> {
-	return function ({lookupKey, node, opts}): T[] | null {
+	return function ({node, opts, isRequired}): T[] | null {
 		assertChildNode(node);
 		const targetNodeName = opts.ignoreCase ? name.toLowerCase() : name;
 		// check that the node name matches the expected nodeName from child nodes
-		const childNodeNames = new Set(Array.from(node.childNodes).map((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() : n.nodeName)));
-		if (childNodeNames.size > 0 && !childNodeNames.has(targetNodeName)) {
-			logger?.debug(`no matching ${targetNodeName} found from ${buildXmlPath(node)}`);
-		}
-		// get child nodes for the target node name
-		const childNode = Array.from(node.childNodes).find((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() === targetNodeName : n.nodeName === targetNodeName));
-		if (!schema[lookupKey]?.required && !childNode) {
+		warnChildNodeNames(node, targetNodeName, opts);
+		// get parent array node
+		const parentArrayNode = Array.from(node.childNodes).find((n) =>
+			opts.ignoreCase ? n.nodeName.toLowerCase() === targetNodeName : n.nodeName === targetNodeName,
+		);
+		if (!parentArrayNode) {
+			if (isRequired) {
+				throw new XmlParserError(`parent array node for nodeName '${targetNodeName}' not found `, node);
+			}
 			if (opts.emptyArrayAsArray) {
 				return [];
 			}
 			return null;
 		}
-		assertChildNode(childNode);
 		let idx = 0;
-		return Array.from(childNode.childNodes).reduce<T[]>((prev, child) => {
+		return Array.from(parentArrayNode.childNodes).reduce<T[]>((prev, child) => {
 			// skip non-element nodes (text, attributes, comments, etc)
 			if (!nodeIsElement(child)) {
 				return prev;
@@ -199,6 +200,16 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 			return prev;
 		}, []);
 	};
+}
+
+/**
+ * Warn if child nodes are found but nodeName does not match the expected nodeName we are looking for
+ */
+function warnChildNodeNames(node: Node, targetNodeName: string, opts: XmlParserOptions): void {
+	const childNodeNames = new Set(Array.from(node.childNodes).map((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() : n.nodeName)));
+	if (childNodeNames.size > 0 && !childNodeNames.has(targetNodeName)) {
+		logger?.debug(`no matching ${targetNodeName} found from ${buildXmlPath(node)}`);
+	}
 }
 
 export function nodeIsElement(node: Node): node is Element {
