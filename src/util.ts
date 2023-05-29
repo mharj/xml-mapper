@@ -1,5 +1,25 @@
 import {XmlParserError, XmlParserOptions, XmlSchemaItem} from '.';
 
+export function parseInteger(value: string | null): number | null {
+	if (value === null) {
+		return null;
+	}
+	if (typeof value !== 'string') {
+		throw TypeError(`parseInteger expected string, got ${typeof value}`);
+	}
+	return parseInt(value, 10);
+}
+
+export function parseDate(value: string | null): Date | null {
+	if (value === null) {
+		return null;
+	}
+	if (typeof value !== 'string') {
+		throw TypeError(`parseDate expected string, got ${typeof value}`);
+	}
+	return new Date(value);
+}
+
 export function assertNode(node: ChildNode | undefined, rootNode: ChildNode, message: string): asserts node is ChildNode {
 	if (!node) {
 		throw new XmlParserError(message, rootNode);
@@ -15,7 +35,8 @@ export function assertChildNode(node: ChildNode | undefined): asserts node is Ch
 	}
 }
 
-export function getKey(key: string, schemaItem: XmlSchemaItem<unknown>, opts: XmlParserOptions): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getKey(key: string, schemaItem: XmlSchemaItem<any>, opts: XmlParserOptions): string {
 	const casedKey = opts.ignoreCase ? key.toLowerCase() : key;
 	return schemaItem.namespace ? `${schemaItem.namespace}:${casedKey}` : casedKey;
 }

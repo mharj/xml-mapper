@@ -34,6 +34,7 @@ export function setLogger(newLogger: Console | undefined) {
  */
 export type XmlSchemaItem<T> = {
 	mapper: XmlMappingComposeFunction<T>;
+	validator?: (value: T) => boolean;
 	required?: true;
 	namespace?: string;
 };
@@ -42,7 +43,7 @@ export type XmlSchemaItem<T> = {
  * Schema for XML object mapping
  */
 export type XmlMappingSchema<T> = {
-	[K in keyof T]: XmlSchemaItem<T[K]>;
+	[K in keyof Required<T>]: XmlSchemaItem<T[K]>;
 };
 
 function objectParser<T extends Record<string, unknown> = Record<string, unknown>>(rootNode: Element, schema: XmlMappingSchema<T>, opts: XmlParserOptions): T {

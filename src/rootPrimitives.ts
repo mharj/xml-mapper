@@ -1,4 +1,4 @@
-import {assertNode} from './util';
+import {assertNode, parseDate, parseInteger} from './util';
 import {XmlMappingComposeFunction} from '.';
 
 /**
@@ -17,8 +17,7 @@ export const rootStringValue: XmlMappingComposeFunction<string> = ({lookupKey, r
  * ```<root>123</root> => {lookupKey: 123}```
  */
 export const rootIntegerValue: XmlMappingComposeFunction<number> = (props) => {
-	const value = rootStringValue(props);
-	return value ? parseInt(value, 10) : null;
+	return parseInteger(rootStringValue(props));
 };
 
 /**
@@ -27,6 +26,5 @@ export const rootIntegerValue: XmlMappingComposeFunction<number> = (props) => {
  * ```<root>2021-01-01</root> => {lookupKey: Date("2021-01-01")}```
  */
 export const rootDateValue: XmlMappingComposeFunction<Date> = (props) => {
-	const value = rootStringValue(props);
-	return value ? new Date(value) : null;
+	return parseDate(rootStringValue(props));
 };

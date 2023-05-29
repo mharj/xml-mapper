@@ -1,3 +1,4 @@
+/* eslint-disable sort-imports */
 /* eslint-disable sort-keys */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {DOMParser} from 'xmldom';
@@ -135,15 +136,15 @@ describe('XML mapping', () => {
 		const data: XmlData = rootParser(doc.documentElement, rootSchema);
 		expect(data).to.be.eql(output);
 	});
-	it('should return case-insensitive value if ignore case is true', async () => {
+	it('should return case-insensitive value if ignore case is true and automap attr keys', async () => {
 		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
-			id: {mapper: rootAttrNumberValue('id'), required: true},
+			id: {mapper: rootAttrNumberValue(), required: true},
 			name: {mapper: stringValue, required: true},
 			value: {mapper: stringValue, required: true},
 		};
 
 		const itemSchema: XmlMappingSchema<{id: number; item: number}> = {
-			id: {mapper: rootAttrNumberValue('id'), required: true},
+			id: {mapper: rootAttrNumberValue(), required: true},
 			item: {mapper: rootIntegerValue, required: true},
 		};
 
