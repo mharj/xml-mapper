@@ -157,6 +157,35 @@ export function arraySchemaValue<T extends Record<string, unknown> = Record<stri
 	};
 }
 
+/**
+ * mapping for array of objects
+ * @param name name of the root of the list
+ */
+export function directArraySchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(
+	name: string,
+	schema: XmlMappingSchema<T>,
+): XmlMappingComposeFunction<T[]> {
+	return function ({lookupKey, node, opts}): T[] | null {
+		assertChildNode(node);
+		const childNode = Array.from(node.childNodes).find((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() === name.toLowerCase() : n.nodeName === name));
+		if (!schema[lookupKey]?.required && !childNode) {
+			if (opts.emptyArrayAsArray) {
+				return [];
+			}
+			return null;
+		}
+		assertChildNode(childNode);
+		let idx = 0;
+		return Array.from(childNode.childNodes).reduce<T[]>((prev, child) => {
+			if (child.childNodes === null) return prev;
+			logger?.debug(`arraySchema [${idx}] ${buildXmlPath(child)}`);
+			prev.push(objectParser(child as Element, schema, opts));
+			idx++;
+			return prev;
+		}, []);
+	};
+}
+
 export function nodeIsElement(node: Node): node is Element {
 	return node.nodeType === 1;
 }
