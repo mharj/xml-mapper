@@ -152,8 +152,8 @@ export function arraySchemaValue<T extends Record<string, unknown> = Record<stri
  * @param name name of the root of the list
  */
 export function directArraySchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(
-	schema: XmlMappingSchema<T>,
 	name: string,
+	schema: XmlMappingSchema<T>,
 ): XmlMappingComposeFunction<T[]> {
 	return function ({lookupKey, node, opts}): T[] | null {
 		assertChildNode(node);

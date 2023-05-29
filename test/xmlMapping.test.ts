@@ -244,7 +244,7 @@ describe('XML mapping', () => {
 		const dataSchema: XmlMappingSchema<{
 			items: {id: string}[];
 		}> = {
-			items: {mapper: directArraySchemaValue(itemSchema, 'array'), required: true},
+			items: {mapper: directArraySchemaValue('array', itemSchema), required: true},
 		};
 
 		const parsed = rootParser(docWithObjectArray.documentElement, dataSchema);
