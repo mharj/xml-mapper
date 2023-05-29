@@ -194,7 +194,7 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 			if (!nodeIsElement(child)) {
 				return prev;
 			}
-			logger?.debug(`arraySchema [${idx}] ${buildXmlPath(child)}`);
+			logger?.debug(`directArraySchema [${idx}] ${buildXmlPath(child)}`);
 			prev.push(objectParser(child as Element, schema, opts));
 			idx++;
 			return prev;
