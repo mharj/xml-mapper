@@ -48,12 +48,11 @@ function objectParser<T extends Record<string, unknown> = Record<string, unknown
 	if (!rootNode) {
 		throw new XmlParserError('Root node is null', rootNode);
 	}
-	logger?.debug(`objectSchema ${buildXmlPath(rootNode)}`);
 	const childMap = new Map(Array.from(rootNode.childNodes).map<[string, ChildNode]>((child) => [child.nodeName, child]));
 	childMap.delete('#text');
 	const schemaEntries = Object.entries(schema) as [string, XmlSchemaItem<T[keyof T]>][];
 	const patchItem = schemaEntries.reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
-		logger?.debug(`objectSchema lookup ${buildXmlPath(rootNode)}/${schemaKey}`);
+		logger?.debug(`objectSchema key '${schemaKey}' lookup ${buildXmlPath(rootNode)}`);
 		const {key, child} = getChild(childMap, schemaKey, schemaItem, opts);
 		const value = schemaItem.mapper({lookupKey: key, node: child, opts, rootNode});
 		if (schemaItem.required && value === null) {
@@ -120,6 +119,7 @@ export function objectSchemaValue<T extends Record<string, unknown> = Record<str
 		if (!schema[lookupKey]?.required && !node) {
 			return null; // if not required and not found, return null wihout parsing
 		}
+		logger?.debug(`objectSchema ${buildXmlPath(node as Element)}`);
 		return objectParser(node as Element, schema, opts);
 	};
 }
@@ -136,9 +136,12 @@ export function arraySchemaValue<T extends Record<string, unknown> = Record<stri
 			return null;
 		}
 		assertChildNode(node);
+		let idx = 0;
 		return Array.from(node.childNodes).reduce<T[]>((prev, child) => {
 			if (child.childNodes === null) return prev;
+			logger?.debug(`arraySchema [${idx}] ${buildXmlPath(child)}`);
 			prev.push(objectParser(child as Element, schema, opts));
+			idx++;
 			return prev;
 		}, []);
 	};
