@@ -176,7 +176,7 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 		// check that the node name matches the expected nodeName from child nodes
 		const childNodeNames = new Set(Array.from(node.childNodes).map((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() : n.nodeName)));
 		if (childNodeNames.size > 0 && !childNodeNames.has(targetNodeName)) {
-			logger?.debug(`no matching ${targetNodeName} found from ${buildXmlPath(node)} not found`);
+			logger?.debug(`no matching ${targetNodeName} found from ${buildXmlPath(node)}`);
 		}
 		// get child nodes for the target node name
 		const childNode = Array.from(node.childNodes).find((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() === targetNodeName : n.nodeName === targetNodeName));
