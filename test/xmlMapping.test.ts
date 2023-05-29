@@ -15,6 +15,7 @@ import {
 	setLogger,
 	stringValue,
 	XmlParserError,
+	directArraySchemaValue,
 } from '../src/';
 const expect = chai.expect;
 
@@ -70,9 +71,21 @@ const xmlNamespace = `<ns:root>
     </ns:object>
 </ns:root>`;
 
+const xmlWithObjectArray = `<root>
+		<array>
+				<item>
+						<id>1</id>	
+				</item>
+				<item>
+						<id>2</id>
+				</item>
+		</array>
+</root>`;
+
 let doc: Document;
 let docWithCase: Document;
 let docNamespace: Document;
+let docWithObjectArray: Document;
 
 const output = {
 	root: {
@@ -93,6 +106,7 @@ describe('XML mapping', () => {
 		doc = new DOMParser().parseFromString(xml);
 		docWithCase = new DOMParser().parseFromString(xmlWithCase);
 		docNamespace = new DOMParser().parseFromString(xmlNamespace);
+		docWithObjectArray = new DOMParser().parseFromString(xmlWithObjectArray);
 	});
 	it('should return mapped object', async () => {
 		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
@@ -222,5 +236,21 @@ describe('XML mapping', () => {
 			root: {mapper: objectSchemaValue<any>(dataSchema), required: true},
 		};
 		expect(() => rootParser(doc.documentElement, rootSchema, {isStrict: true})).to.throws(XmlParserError, `unknown key(s) 'string' in #document/root`);
+	});
+	it('should parse item with array of object', async () => {
+		const itemSchema: XmlMappingSchema<{id: string}> = {
+			id: {mapper: stringValue, required: true},
+		};
+		const dataSchema: XmlMappingSchema<{
+			items: {id: string}[];
+		}> = {
+			items: {mapper: directArraySchemaValue(itemSchema, 'array'), required: true},
+		};
+
+		const parsed = rootParser(docWithObjectArray.documentElement, dataSchema);
+
+		expect(parsed).to.be.eql({
+			items: [{id: '1'}, {id: '2'}],
+		});
 	});
 });
