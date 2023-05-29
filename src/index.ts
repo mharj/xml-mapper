@@ -19,6 +19,7 @@ export type XmlMappingFunctionProps = {
 	node: ChildNode | undefined;
 	rootNode: ChildNode;
 	opts: XmlParserOptions;
+	isRequired: boolean;
 };
 
 export type XmlMappingComposeFunction<T> = (arg: XmlMappingFunctionProps) => T | null;
@@ -54,7 +55,7 @@ function objectParser<T extends Record<string, unknown> = Record<string, unknown
 	const patchItem = schemaEntries.reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
 		logger?.debug(`objectSchema key '${schemaKey}' lookup ${buildXmlPath(rootNode)}`);
 		const {key, child} = getChild(childMap, schemaKey, schemaItem, opts);
-		const value = schemaItem.mapper({lookupKey: key, node: child, opts, rootNode});
+		const value = schemaItem.mapper({isRequired: schemaItem.required || false, lookupKey: key, node: child, opts, rootNode});
 		if (schemaItem.required && value === null) {
 			throw new XmlParserError(`key '${key}' not found on path '${buildXmlPath(rootNode)}' and is required on schema`, rootNode);
 		}
@@ -97,6 +98,7 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 		logger?.debug(`rootParser lookup ${buildXmlPath(rootNode)} @ ${schemaKey}`);
 		const key = getKey(schemaKey, schemaItem, currentOpts);
 		const value = schemaItem.mapper({
+			isRequired: schemaItem.required || false,
 			lookupKey: key,
 			node: rootNode,
 			opts: currentOpts,
@@ -115,10 +117,10 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
  * mapping for object based on schema
  */
 export function objectSchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(schema: XmlMappingSchema<T>): XmlMappingComposeFunction<T> {
-	return function ({lookupKey, node, rootNode, opts}): T | null {
+	return function ({lookupKey, node, rootNode, opts, isRequired}): T | null {
 		if (!node) {
-			if (schema[lookupKey]?.required) {
-				throw new XmlParserError(`key '${lookupKey}' not found and is required on schema`, rootNode);
+			if (isRequired) {
+				throw new XmlParserError(`node for key '${lookupKey}' not found and is required on schema`, rootNode);
 			} else {
 				return null;
 			}
@@ -135,8 +137,11 @@ export function objectSchemaValue<T extends Record<string, unknown> = Record<str
  * mapping for array of objects based on schema
  */
 export function arraySchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(schema: XmlMappingSchema<T>): XmlMappingComposeFunction<T[]> {
-	return function ({lookupKey, node, opts}): T[] | null {
-		if (!schema[lookupKey]?.required && !node) {
+	return function ({lookupKey, node, rootNode, opts, isRequired}): T[] | null {
+		if (!node) {
+			if (isRequired) {
+				throw new XmlParserError(`node for key '${lookupKey}' not found and is required on schema`, rootNode);
+			}
 			if (opts.emptyArrayAsArray) {
 				return [];
 			}
@@ -167,7 +172,14 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 ): XmlMappingComposeFunction<T[]> {
 	return function ({lookupKey, node, opts}): T[] | null {
 		assertChildNode(node);
-		const childNode = Array.from(node.childNodes).find((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() === name.toLowerCase() : n.nodeName === name));
+		const targetNodeName = opts.ignoreCase ? name.toLowerCase() : name;
+		// check that the node name matches the expected nodeName from child nodes
+		const childNodeNames = new Set(Array.from(node.childNodes).map((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() : n.nodeName)));
+		if (childNodeNames.size > 0 && !childNodeNames.has(targetNodeName)) {
+			logger?.debug(`no matching ${targetNodeName} found from ${buildXmlPath(node)} not found`);
+		}
+		// get child nodes for the target node name
+		const childNode = Array.from(node.childNodes).find((n) => (opts.ignoreCase ? n.nodeName.toLowerCase() === targetNodeName : n.nodeName === targetNodeName));
 		if (!schema[lookupKey]?.required && !childNode) {
 			if (opts.emptyArrayAsArray) {
 				return [];
@@ -177,7 +189,10 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 		assertChildNode(childNode);
 		let idx = 0;
 		return Array.from(childNode.childNodes).reduce<T[]>((prev, child) => {
-			if (child.childNodes === null) return prev;
+			// skip non-element nodes (text, attributes, comments, etc)
+			if (!nodeIsElement(child)) {
+				return prev;
+			}
 			logger?.debug(`arraySchema [${idx}] ${buildXmlPath(child)}`);
 			prev.push(objectParser(child as Element, schema, opts));
 			idx++;
