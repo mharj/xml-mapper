@@ -115,12 +115,19 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
  * mapping for object based on schema
  */
 export function objectSchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(schema: XmlMappingSchema<T>): XmlMappingComposeFunction<T> {
-	return function ({lookupKey, node, opts}): T | null {
-		if (!schema[lookupKey]?.required && !node) {
-			return null; // if not required and not found, return null wihout parsing
+	return function ({lookupKey, node, rootNode, opts}): T | null {
+		if (!node) {
+			if (schema[lookupKey]?.required) {
+				throw new XmlParserError(`key '${lookupKey}' not found and is required on schema`, rootNode);
+			} else {
+				return null;
+			}
 		}
-		logger?.debug(`objectSchema ${buildXmlPath(node as Element)}`);
-		return objectParser(node as Element, schema, opts);
+		if (!nodeIsElement(node)) {
+			throw new XmlParserError(`node is not an element type`, node);
+		}
+		logger?.debug(`objectSchema ${buildXmlPath(node)}`);
+		return objectParser(node, schema, opts);
 	};
 }
 
@@ -138,11 +145,18 @@ export function arraySchemaValue<T extends Record<string, unknown> = Record<stri
 		assertChildNode(node);
 		let idx = 0;
 		return Array.from(node.childNodes).reduce<T[]>((prev, child) => {
-			if (child.childNodes === null) return prev;
+			// skip non-element nodes (text, attributes, comments, etc)
+			if (!nodeIsElement(child)) {
+				return prev;
+			}
 			logger?.debug(`arraySchema [${idx}] ${buildXmlPath(child)}`);
-			prev.push(objectParser(child as Element, schema, opts));
+			prev.push(objectParser(child, schema, opts));
 			idx++;
 			return prev;
 		}, []);
 	};
+}
+
+export function nodeIsElement(node: Node): node is Element {
+	return node.nodeType === 1;
 }
