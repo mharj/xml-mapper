@@ -6,11 +6,12 @@ import {XmlMappingComposeFunction} from '.';
  *
  * ```<root><node>value</node></root> => {node: "value"}```
  */
-export const stringValue: XmlMappingComposeFunction<string> = ({lookupKey, node, rootNode}) => {
+export const stringValue: XmlMappingComposeFunction<string> = ({lookupKey, node, rootNode, opts, emptyAsNull}) => {
 	assertNode(node, rootNode, `stringValue got null node from ${buildXmlPath(rootNode)} key: ${lookupKey}`);
 	if (node.childNodes.length !== 1) {
 		// empty element
-		return null;
+		if (emptyAsNull) return null;
+		return '';
 	}
 	return node.childNodes[0].nodeValue;
 };

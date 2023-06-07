@@ -20,6 +20,7 @@ export type XmlMappingFunctionProps = {
 	rootNode: ChildNode;
 	opts: XmlParserOptions;
 	isRequired: boolean;
+	emptyAsNull: boolean;
 };
 
 export type XmlMappingComposeFunction<T> = (arg: XmlMappingFunctionProps) => T | null;
@@ -37,6 +38,7 @@ export type XmlSchemaItem<T> = {
 	validator?: (value: T) => boolean;
 	required?: true;
 	namespace?: string;
+	emptyAsNull?: T extends string ? false : never;
 };
 
 /**
@@ -56,7 +58,14 @@ function objectParser<T extends Record<string, unknown> = Record<string, unknown
 	const patchItem = schemaEntries.reduce<Record<string, unknown>>((prev, [schemaKey, schemaItem]) => {
 		logger?.debug(`objectSchema key '${schemaKey}' lookup ${buildXmlPath(rootNode)}`);
 		const {key, child} = getChild(childMap, schemaKey, schemaItem, opts);
-		const value = schemaItem.mapper({isRequired: schemaItem.required || false, lookupKey: key, node: child, opts, rootNode});
+		const value = schemaItem.mapper({
+			emptyAsNull: schemaItem.emptyAsNull ?? true,
+			isRequired: schemaItem.required || false,
+			lookupKey: key,
+			node: child,
+			opts,
+			rootNode,
+		});
 		if (schemaItem.required && value === null) {
 			throw new XmlParserError(`key '${key}' not found on path '${buildXmlPath(rootNode)}' and is required on schema`, rootNode);
 		}
@@ -99,6 +108,7 @@ export function rootParser<T extends Record<string, unknown> = Record<string, un
 		logger?.debug(`rootParser lookup ${buildXmlPath(rootNode)} @ ${schemaKey}`);
 		const key = getKey(schemaKey, schemaItem, currentOpts);
 		const value = schemaItem.mapper({
+			emptyAsNull: schemaItem.emptyAsNull ?? true,
 			isRequired: schemaItem.required || false,
 			lookupKey: key,
 			node: rootNode,
