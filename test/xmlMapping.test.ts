@@ -83,10 +83,15 @@ const xmlWithObjectArray = `<root>
 		</array>
 </root>`;
 
+const xmlEmptyString = `<root>
+		<string></string>
+</root>`;
+
 let doc: Document;
 let docWithCase: Document;
 let docNamespace: Document;
 let docWithObjectArray: Document;
+let docEmptyString: Document;
 
 const output = {
 	root: {
@@ -108,6 +113,7 @@ describe('XML mapping', () => {
 		docWithCase = new DOMParser().parseFromString(xmlWithCase);
 		docNamespace = new DOMParser().parseFromString(xmlNamespace);
 		docWithObjectArray = new DOMParser().parseFromString(xmlWithObjectArray);
+		docEmptyString = new DOMParser().parseFromString(xmlEmptyString);
 	});
 	it('should return mapped object', async () => {
 		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
@@ -252,6 +258,19 @@ describe('XML mapping', () => {
 
 		expect(parsed).to.be.eql({
 			items: [{id: '1'}, {id: '2'}],
+		});
+	});
+	it('should return empty string if node is empty and emptyAsNull is false', async () => {
+		const dataSchema: XmlMappingSchema<{
+			string: string;
+		}> = {
+			string: {mapper: stringValue, emptyAsNull: false},
+		};
+
+		const parsed = rootParser(docEmptyString.documentElement, dataSchema);
+
+		expect(parsed).to.be.eql({
+			string: '',
 		});
 	});
 });
