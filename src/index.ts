@@ -25,6 +25,8 @@ export type XmlMappingFunctionProps = {
 
 export type XmlMappingComposeFunction<T> = (arg: XmlMappingFunctionProps) => T | null;
 
+export type ArgHandlerFunc<T> = (node: Element, opts: XmlParserOptions) => T | null;
+
 let logger: undefined | Console;
 export function setLogger(newLogger: Console | undefined) {
 	logger = newLogger;
@@ -210,6 +212,67 @@ export function directArraySchemaValue<T extends Record<string, unknown> = Recor
 			idx++;
 			return prev;
 		}, []);
+	};
+}
+
+/**
+ * Base for inline array schema value
+ * @param name name of the item in the array
+ * @param argHandler handler for the array item
+ */
+export function inlineArraySchemaValueBase<T>(name: string, {rootNode, opts}: XmlMappingFunctionProps, argHandler: ArgHandlerFunc<T>): T[] | null {
+	assertChildNode(rootNode);
+	const targetNodeName = opts.ignoreCase ? name.toLowerCase() : name;
+
+	// check that the node name matches the expected nodeName from child nodes
+	warnChildNodeNames(rootNode, targetNodeName, opts);
+
+	let idx = 0;
+	return Array.from(rootNode.childNodes).reduce<T[]>((prev, child) => {
+		const nodeName = opts.ignoreCase ? child.nodeName.toLowerCase() : child.nodeName;
+		// skip non-element nodes (text, attributes, comments, etc)
+		if (!nodeIsElement(child) || nodeName !== targetNodeName) {
+			return prev;
+		}
+		logger?.debug(`inlineArraySchema [${idx}] ${buildXmlPath(child)}`);
+		const value = argHandler(child, opts);
+		if (value === null) {
+			logger?.debug(`inlineArraySchema [${idx}] ${buildXmlPath(child)} value is null, skipping`);
+			return prev;
+		}
+		prev.push(value);
+		idx++;
+		return prev;
+	}, []);
+}
+
+/**
+ * Inline array schema value is able to parse an array of objects that are inline with the parent node
+ * Use inlineArraySchemaValuePrimitive for primitive types
+ * @param name name of the list item
+ * @param schema schema for the list item
+ */
+export function inlineArraySchemaValue<T extends Record<string, unknown> = Record<string, unknown>>(
+	name: string,
+	schema: XmlMappingSchema<T>,
+): XmlMappingComposeFunction<T[]> {
+	return (props): T[] | null => {
+		return inlineArraySchemaValueBase(name, props, (child, opts) => objectParser(child, schema, opts));
+	};
+}
+
+/**
+ * Inline array schema value is able to parse an array of primitives that are inline with the parent node
+ * Use inlineArraySchemaValue for objects
+ */
+export function inlineArraySchemaValuePrimitive<T extends string | number | boolean = string>(
+	name: string,
+	mapper: XmlMappingComposeFunction<T>,
+): XmlMappingComposeFunction<T[]> {
+	return function (props): T[] | null {
+		return inlineArraySchemaValueBase(name, props, (child, opts) =>
+			mapper({emptyAsNull: false, isRequired: false, lookupKey: '', node: child, opts, rootNode: child}),
+		);
 	};
 }
 
