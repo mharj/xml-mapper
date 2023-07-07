@@ -17,6 +17,8 @@ import {
 	stringValue,
 	XmlParserError,
 	directArraySchemaValue,
+	inlineArraySchemaValuePrimitive,
+	inlineArraySchemaValue,
 } from '../src/';
 const expect = chai.expect;
 
@@ -27,6 +29,24 @@ type XmlData = {
 		date: Date;
 		array: {id: number; item: number}[];
 		object: {id: number; name: string; value: string};
+	};
+};
+
+type InlineArrayData = {
+	root: {
+		object: {
+			inlineArray: string[];
+			notItem: string;
+		};
+	};
+};
+
+type InlineArrayObjectData = {
+	root: {
+		object: {
+			inlineArray: {id: number}[];
+			notItem: string;
+		};
 	};
 };
 
@@ -87,11 +107,33 @@ const xmlEmptyString = `<root>
 		<string></string>
 </root>`;
 
+const xmlInlineArray = `<root>
+		<object>
+				<item>1</item>
+				<item>2</item>
+				<notItem>3</notItem>
+		</object>
+</root>`;
+
+const xmlInlineArrayObject = `<root>
+		<object>
+				<item>
+						<id>1</id>
+				</item>
+				<item>
+						<id>2</id>
+				</item>
+				<notItem>3</notItem>
+		</object>
+</root>`;
+
 let doc: Document;
 let docWithCase: Document;
 let docNamespace: Document;
 let docWithObjectArray: Document;
 let docEmptyString: Document;
+let docInlineArray: Document;
+let docInlineArrayObject: Document;
 
 const output = {
 	root: {
@@ -114,6 +156,8 @@ describe('XML mapping', () => {
 		docNamespace = new DOMParser().parseFromString(xmlNamespace);
 		docWithObjectArray = new DOMParser().parseFromString(xmlWithObjectArray);
 		docEmptyString = new DOMParser().parseFromString(xmlEmptyString);
+		docInlineArray = new DOMParser().parseFromString(xmlInlineArray);
+		docInlineArrayObject = new DOMParser().parseFromString(xmlInlineArrayObject);
 	});
 	it('should return mapped object', async () => {
 		const objectSchema: XmlMappingSchema<XmlData['root']['object']> = {
@@ -271,6 +315,58 @@ describe('XML mapping', () => {
 
 		expect(parsed).to.be.eql({
 			string: '',
+		});
+	});
+	it('should parse inline array', async () => {
+		const dataSchema: XmlMappingSchema<InlineArrayData['root']> = {
+			object: {
+				mapper: objectSchemaValue({
+					inlineArray: {mapper: inlineArraySchemaValuePrimitive('item', stringValue)},
+					notItem: {mapper: stringValue, required: true},
+				}),
+			},
+		};
+		const rootBuilder: XmlMappingSchema<InlineArrayData> = {
+			root: {
+				mapper: objectSchemaValue(dataSchema),
+				required: true,
+			},
+		};
+		const parsed = rootParser(docInlineArray.documentElement, rootBuilder);
+
+		expect(parsed).to.be.eql({
+			root: {
+				object: {
+					inlineArray: ['1', '2'],
+					notItem: '3',
+				},
+			},
+		});
+	});
+	it('should parse inline array with object', async () => {
+		const dataSchema: XmlMappingSchema<InlineArrayObjectData['root']> = {
+			object: {
+				mapper: objectSchemaValue({
+					inlineArray: {mapper: inlineArraySchemaValue('item', {id: {mapper: integerValue, required: true}})},
+					notItem: {mapper: stringValue, required: true},
+				}),
+			},
+		};
+		const rootBuilder: XmlMappingSchema<InlineArrayObjectData> = {
+			root: {
+				mapper: objectSchemaValue(dataSchema),
+				required: true,
+			},
+		};
+		const parsed = rootParser(docInlineArrayObject.documentElement, rootBuilder);
+
+		expect(parsed).to.be.eql({
+			root: {
+				object: {
+					inlineArray: [{id: 1}, {id: 2}],
+					notItem: '3',
+				},
+			},
 		});
 	});
 });
