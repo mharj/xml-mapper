@@ -19,6 +19,7 @@ import {
 	directArraySchemaValue,
 	inlineArraySchemaValuePrimitive,
 	inlineArraySchemaValue,
+	numberValue,
 } from '../src/';
 const expect = chai.expect;
 
@@ -26,6 +27,7 @@ type XmlData = {
 	root: {
 		string: string;
 		number: number;
+		numberfloat: number;
 		date: Date;
 		array: {id: number; item: number}[];
 		object: {id: number; name: string; value: string};
@@ -53,6 +55,7 @@ type InlineArrayObjectData = {
 const xml = `<root>
     <string>string</string>
     <number>123</number>
+		<numberfloat>123.5</numberfloat>
     <date>2020-01-01T00:00:00.000Z</date>
     <array>
         <item id="1">1</item>
@@ -67,6 +70,7 @@ const xml = `<root>
 const xmlWithCase = `<root>
 		<String>string</String>
 		<Number>123</Number>
+		<Numberfloat>123.5</Numberfloat>
 		<Date>2020-01-01T00:00:00.000Z</Date>
 		<ArrAy>
 				<Item id="1">1</Item>
@@ -81,6 +85,7 @@ const xmlWithCase = `<root>
 const xmlNamespace = `<ns:root>
     <ns:string>string</ns:string>
     <ns:number>123</ns:number>
+		<ns:numberfloat>123.5</ns:numberfloat>
     <ns:date>2020-01-01T00:00:00.000Z</ns:date>
     <ns:array>
         <ns:item id="1">1</ns:item>
@@ -139,6 +144,7 @@ const output = {
 	root: {
 		string: 'string',
 		number: 123,
+		numberfloat: 123.5,
 		date: new Date('2020-01-01T00:00:00.000Z'),
 		array: [
 			{id: 1, item: 1},
@@ -174,6 +180,7 @@ describe('XML mapping', () => {
 		const dataSchema: XmlMappingSchema<XmlData['root']> = {
 			string: {mapper: stringValue, required: true},
 			number: {mapper: integerValue, required: true},
+			numberfloat: {mapper: numberValue({parser: parseFloat}), required: true},
 			date: {mapper: dateValue, required: true},
 			array: {mapper: arraySchemaValue(itemSchema), required: true},
 			object: {mapper: objectSchemaValue(objectSchema), required: true},
@@ -201,6 +208,7 @@ describe('XML mapping', () => {
 		const dataSchema: XmlMappingSchema<XmlData['root']> = {
 			string: {mapper: stringValue, required: true},
 			number: {mapper: integerValue, required: true},
+			numberfloat: {mapper: numberValue({parser: parseFloat}), required: true},
 			date: {mapper: dateValue, required: true},
 			array: {mapper: arraySchemaValue(itemSchema), required: true},
 			object: {mapper: objectSchemaValue(objectSchema), required: true},
@@ -228,6 +236,7 @@ describe('XML mapping', () => {
 		const dataSchema: XmlMappingSchema<XmlData['root']> = {
 			string: {mapper: stringValue, required: true, namespace: 'ns'},
 			number: {mapper: integerValue, required: true, namespace: 'ns'},
+			numberfloat: {mapper: numberValue({parser: parseFloat}), required: true, namespace: 'ns'},
 			date: {mapper: dateValue, required: true, namespace: 'ns'},
 			array: {mapper: arraySchemaValue(itemSchema), required: true, namespace: 'ns'},
 			object: {mapper: objectSchemaValue(objectSchema), required: true, namespace: 'ns'},
@@ -255,6 +264,7 @@ describe('XML mapping', () => {
 		const dataSchema: XmlMappingSchema<XmlData['root'] & {notExists: string}> = {
 			string: {mapper: stringValue, required: true},
 			number: {mapper: integerValue, required: true},
+			numberfloat: {mapper: numberValue({parser: parseFloat}), required: true},
 			date: {mapper: dateValue, required: true},
 			array: {mapper: arraySchemaValue(itemSchema), required: true},
 			object: {mapper: objectSchemaValue(objectSchema), required: true},
@@ -279,6 +289,7 @@ describe('XML mapping', () => {
 		type BrokenRoot = Omit<XmlData['root'], 'string'>;
 		const dataSchema: XmlMappingSchema<BrokenRoot> = {
 			number: {mapper: integerValue, required: true},
+			numberfloat: {mapper: numberValue({parser: parseFloat}), required: true},
 			date: {mapper: dateValue, required: true},
 			array: {mapper: arraySchemaValue(itemSchema), required: true},
 			object: {mapper: objectSchemaValue(objectSchema), required: true},

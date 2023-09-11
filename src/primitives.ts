@@ -1,6 +1,10 @@
 import {assertNode, buildXmlPath} from './util';
 import {XmlMappingComposeFunction} from '.';
 
+interface INumberValueOpts {
+	parser: (value: string) => number;
+}
+
 /**
  * reads string value from current node (mapped from node name)
  *
@@ -24,6 +28,15 @@ export const stringValue: XmlMappingComposeFunction<string> = ({lookupKey, node,
 export const integerValue: XmlMappingComposeFunction<number> = (props) => {
 	const value = stringValue(props);
 	return value ? parseInt(value, 10) : null;
+};
+
+/**
+ * reads number value(float) from current node
+ * ```<root><node>123.35</node></root>```
+ */
+export const numberValue: (opts: INumberValueOpts) => XmlMappingComposeFunction<number> = (opts) => (props) => {
+	const value = stringValue(props);
+	return value ? opts.parser(value) : null;
 };
 
 /**
