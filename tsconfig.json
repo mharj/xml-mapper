@@ -1,40 +1,9 @@
 {
-    "compilerOptions": {
-        "lib": [
-            "es2021",
-            "dom",
-            "dom.iterable"
-        ],
-        "module": "commonjs",
-        "target": "es2015",
-        "rootDir": "./src",
-        "outDir": "./dist",
-        "moduleResolution": "node",
-        "sourceRoot": "./src",
-        "types": [
-            "node",
-        ],
-        "declaration": true,
-        "removeComments": false,
-        "inlineSources": false,
-        "inlineSourceMap": true,
-        "forceConsistentCasingInFileNames": true,
-        "noImplicitReturns": true,
-        "noImplicitThis": true,
-        "noImplicitAny": true,
-        "importHelpers": false,
-        "strictNullChecks": true,
-        "noUnusedLocals": true,
-        "strict": true,
-        "esModuleInterop": true
-    },
-    "include": [
-        "src"
-    ],
-    "exclude": [
-        "node_modules",
-        "**/*.spec.ts",
-        "test",
-        "dist"
-    ]
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src", "test"],
+  "exclude": ["dist", "node_modules"],
+  "importHelpers": false
 }

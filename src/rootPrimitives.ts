@@ -1,5 +1,5 @@
+import type {XmlMappingComposeFunction} from './common';
 import {assertNode, parseDate, parseInteger} from './util';
-import {XmlMappingComposeFunction} from '.';
 
 /**
  *  reads string text value from current rootNode and maps it to used lookupKey

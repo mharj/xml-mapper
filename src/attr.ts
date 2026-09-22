@@ -1,5 +1,5 @@
-import {assertNode, buildXmlPath} from './util';
-import {parseDate, parseInteger, XmlMappingComposeFunction} from '.';
+import type {XmlMappingComposeFunction} from './common';
+import {assertNode, buildXmlPath, parseDate, parseInteger} from './util';
 
 /**
  * reads string attribute value from current node (mapped to lookupKey)

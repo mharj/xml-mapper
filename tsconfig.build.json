@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "lib": ["es2021", "dom", "dom.iterable"],
+    "module": "preserve",
+    "target": "es2015",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "moduleResolution": "bundler",
+    "sourceRoot": "./src",
+    "types": ["node"],
+    "declaration": true,
+    "removeComments": false,
+    "inlineSources": false,
+    "inlineSourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "importHelpers": false,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "isolatedDeclarations": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "test", "dist"]
+}

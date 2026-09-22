@@ -1,5 +1,5 @@
 # Node project setup
-* text=auto
+* text=auto eol=lf
 *.ps1       text eol=crlf
 *.js        text eol=lf
 *.ts        text eol=lf
@@ -11,7 +11,6 @@
 *.sh        text eol=lf
 *.md        text eol=lf
 *.yml       text eol=lf
-*.md        text eol=lf
 .gitignore  text eol=lf
 .firebaserc text eol=lf
 Dockerfile  text eol=lf

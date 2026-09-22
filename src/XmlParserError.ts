@@ -3,7 +3,7 @@
  */
 export class XmlParserError extends Error {
 	public readonly node: Node;
-	constructor(message: string, node: Node) {
+	public constructor(message: string, node: Node) {
 		super(message);
 		this.node = node;
 		this.name = 'XmlParserError';

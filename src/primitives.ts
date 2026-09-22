@@ -1,5 +1,5 @@
+import type {XmlMappingComposeFunction} from './common';
 import {assertNode, buildXmlPath} from './util';
-import {XmlMappingComposeFunction} from '.';
 
 interface INumberValueOpts {
 	parser: (value: string) => number;
@@ -10,11 +10,13 @@ interface INumberValueOpts {
  *
  * ```<root><node>value</node></root> => {node: "value"}```
  */
-export const stringValue: XmlMappingComposeFunction<string> = ({lookupKey, node, rootNode, opts, emptyAsNull}) => {
+export const stringValue: XmlMappingComposeFunction<string> = ({lookupKey, node, rootNode, emptyAsNull}) => {
 	assertNode(node, rootNode, `stringValue got null node from ${buildXmlPath(rootNode)} key: ${lookupKey}`);
 	if (node.childNodes.length !== 1) {
 		// empty element
-		if (emptyAsNull) return null;
+		if (emptyAsNull) {
+			return null;
+		}
 		return '';
 	}
 	return node.childNodes[0].nodeValue;

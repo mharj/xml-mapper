@@ -1,4 +1,5 @@
-import {XmlParserError, XmlParserOptions, XmlSchemaItem} from '.';
+import type {XmlParserOptions, XmlSchemaItem} from './common';
+import {XmlParserError} from './XmlParserError';
 
 export function parseInteger(value: string | null): number | null {
 	if (value === null) {
