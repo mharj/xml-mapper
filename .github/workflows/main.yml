@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
 env:
   # Setting an environment variable with the value of a configuration variable
   PUBLISH_BRANCH: "refs/heads/main"
